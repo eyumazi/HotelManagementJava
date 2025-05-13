@@ -1,0 +1,2 @@
+Firstname/Lastname/Username/Password/Phonenumber/Email
+Noah/Sefiu/admin/12345/0912345678/adminnoah@gmail.com

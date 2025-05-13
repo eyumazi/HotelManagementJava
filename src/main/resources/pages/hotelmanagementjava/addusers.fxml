@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.text.Font?>
+
+
+<AnchorPane prefHeight="715.0" prefWidth="810.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pages.hotelmanagementjava.AddUsersController">
+   <children>
+      <Label alignment="CENTER" layoutX="275.0" layoutY="14.0" text="Create Account">
+         <font>
+            <Font name="System Bold" size="28.0" />
+         </font>
+      </Label>
+      <Label layoutX="54.0" layoutY="93.0" text="First Name">
+         <font>
+            <Font name="System Bold" size="16.0" />
+         </font>
+      </Label>
+      <Label layoutX="55.0" layoutY="128.0" text="Last Name">
+         <font>
+            <Font name="System Bold" size="16.0" />
+         </font>
+      </Label>
+      <Label layoutX="54.0" layoutY="164.0" text="Phone Number">
+         <font>
+            <Font name="System Bold" size="16.0" />
+         </font>
+      </Label>
+      <Label layoutX="54.0" layoutY="204.0" text="Email">
+         <font>
+            <Font name="System Bold" size="16.0" />
+         </font>
+      </Label>
+      <Label layoutX="489.0" layoutY="93.0" text="Username">
+         <font>
+            <Font name="System Bold" size="16.0" />
+         </font>
+      </Label>
+      <Label layoutX="491.0" layoutY="128.0" text="Password">
+         <font>
+            <Font name="System Bold" size="16.0" />
+         </font>
+      </Label>
+      <Label layoutX="456.0" layoutY="164.0" text="Comfirm Password">
+         <font>
+            <Font name="System Bold" size="16.0" />
+         </font>
+      </Label>
+      <TextField fx:id="firstNameField" layoutX="201.0" layoutY="93.0" />
+      <TextField fx:id="lastNameField" layoutX="201.0" layoutY="128.0" />
+      <TextField fx:id="phoneNumberField" layoutX="201.0" layoutY="164.0" />
+      <TextField fx:id="emailField" layoutX="201.0" layoutY="204.0" />
+      <TextField fx:id="usernameField" layoutX="624.0" layoutY="93.0" />
+      <PasswordField fx:id="passwordField" layoutX="624.0" layoutY="128.0" />
+      <PasswordField fx:id="confirmPasswordField" layoutX="624.0" layoutY="164.0" />
+      <Button fx:id="addUserButton" layoutX="654.0" layoutY="211.0" mnemonicParsing="false" onAction="#addUser" prefHeight="31.0" prefWidth="95.0" style="-fx-background-color: #3d8eff;" text="Add User">
+         <font>
+            <Font name="System Bold" size="15.0" />
+         </font>
+      </Button>
+      <Label alignment="CENTER" layoutX="340.0" layoutY="318.0" text="Users">
+         <font>
+            <Font name="System Bold" size="28.0" />
+         </font>
+      </Label>
+      <TableView fx:id="userTableView" layoutX="18.0" layoutY="380.0" prefHeight="200.0" prefWidth="776.0">
+        <columns>
+          <TableColumn fx:id="firstNameColumn" prefWidth="116.0" text="First Name" />
+          <TableColumn fx:id="lastNameColumn" prefWidth="119.0" text="Last Name" />
+            <TableColumn fx:id="usernameColumn" prefWidth="128.0" text="Username" />
+            <TableColumn fx:id="phoneNumberColumn" prefWidth="159.0" text="Phone Number" />
+            <TableColumn fx:id="emailColumn" prefWidth="253.0" text="Email" />
+        </columns>
+      </TableView>
+      <Label fx:id="errorLabel" alignment="CENTER" layoutX="145.0" layoutY="266.0" prefHeight="20.0" prefWidth="463.0" textFill="#e81717">
+         <font>
+            <Font size="14.0" />
+         </font>
+      </Label>
+   </children>
+</AnchorPane>
