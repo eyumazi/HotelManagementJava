@@ -1,14 +1,10 @@
 package pages.hotelmanagementjava;
-
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
-
 import java.io.IOException;
-
 public class HomePageController {
 
 
@@ -17,9 +13,6 @@ public class HomePageController {
 
     @FXML
     private Label pagetitle;
-
-
-
     @FXML
     private void loadProfile() {
         loadContent("profile.fxml", "Profile Page");

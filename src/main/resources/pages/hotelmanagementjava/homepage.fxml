@@ -76,7 +76,7 @@
                               <Font name="Lucida Sans Typewriter Bold" size="50.0" />
                            </font>
                         </Label>
-                        <Label layoutX="393.0" layoutY="655.0" text="Copyright © 2024 Hotel Management" textFill="#0019b9">
+                        <Label layoutX="393.0" layoutY="655.0" text="Copyright © 2025 Hotel Management" textFill="#0019b9">
                            <font>
                               <Font name="Lucida Bright Demibold" size="20.0" />
                            </font>

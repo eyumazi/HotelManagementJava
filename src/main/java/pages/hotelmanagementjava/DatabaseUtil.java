@@ -34,19 +34,19 @@ public class DatabaseUtil {
                        
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS admins (" +
                     "id INTEGER PRIMARY KEY AUTO_INCREMENT," +
-                    "firstName TEXT, lastName TEXT, username TEXT UNIQUE, password TEXT, phone TEXT, email TEXT)");
+                    "firstName VARCHAR(100), lastName VARCHAR(100), username VARCHAR(100) UNIQUE, password VARCHAR(100), phone VARCHAR(100), email VARCHAR(100))");
             
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS guests (" +
                     "id INTEGER PRIMARY KEY AUTO_INCREMENT," +
-                    "firstName TEXT, lastName TEXT, phone TEXT, email TEXT)");
+                    "firstName VARCHAR(100), lastName VARCHAR(100), phone VARCHAR(100), email VARCHAR(100))");
             
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS rooms (" +
                     "roomNumber INTEGER PRIMARY KEY," +
-                    "roomType TEXT, roomCapacity TEXT, price REAL, availability BOOLEAN)");
+                    "roomType VARCHAR(100), roomCapacity VARCHAR(100), price REAL, availability BOOLEAN)");
             
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS bookings (" +
                     "id INTEGER PRIMARY KEY AUTO_INCREMENT," +
-                    "guestId INTEGER, roomNumber INTEGER, checkInDate TEXT, checkOutDate TEXT," +
+                    "guestId INTEGER, roomNumber INTEGER, checkInDate VARCHAR(100), checkOutDate VARCHAR(100)," +
                     "FOREIGN KEY(guestId) REFERENCES guests(id)," +
                     "FOREIGN KEY(roomNumber) REFERENCES rooms(roomNumber))");
             
@@ -59,6 +59,5 @@ public class DatabaseUtil {
     }
 
     public static void main(String[] args) {
-        initializeDatabase();
     }
 }

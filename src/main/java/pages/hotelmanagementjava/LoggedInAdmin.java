@@ -1,7 +1,7 @@
-package pages.hotelmanagementjava;public class LoggedInAdmin {
+package pages.hotelmanagementjava;
+public class LoggedInAdmin {
 
     private static LoggedInAdmin instance;
-
     private String firstName;
     private String lastName;
     private String userName;

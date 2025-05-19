@@ -6,97 +6,76 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import pages.hotelmanagementjava.classes.Room;
-
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class RoomsController {
-    @FXML
-    private TableView<Room> roomsTable;
-
-    @FXML
-    private TableColumn<Room, Integer> roomNumberColumn;
-
-    @FXML
-    private TableColumn<Room, String> roomTypeColumn;
-
-    @FXML
-    private TableColumn<Room, String> roomCapacityColumn;
-
-    @FXML
-    private TableColumn<Room, Double> priceColumn;
-
-    @FXML
-    private TableColumn<Room, Boolean> availabilityColumn;
-
-
-    @FXML
-    private TextField roomNumberFilter;
-
-    @FXML
-    private RadioButton normalRadioBtn;
-
-    @FXML
-    private RadioButton economyRadioBtn;
-
-    @FXML
-    private RadioButton vipRadioBtn;
-
-    @FXML
-    private RadioButton singleRadioBtn;
-
-    @FXML
-    private RadioButton doubleRadioBtn;
-
-    @FXML
-    private RadioButton tripleRadioBtn;
-
-    @FXML
-    private RadioButton trueRadioBtn;
-
-    @FXML
-    private RadioButton falseRadioBtn;
+    @FXML private TableView<Room> roomsTable;
+    @FXML private TableColumn<Room, Integer> roomNumberColumn;
+    @FXML private TableColumn<Room, String> roomTypeColumn;
+    @FXML private TableColumn<Room, String> roomCapacityColumn;
+    @FXML private TableColumn<Room, Double> priceColumn;
+    @FXML private TableColumn<Room, Boolean> availabilityColumn;
+    
+    @FXML private TextField roomNumberFilter;
+    @FXML private RadioButton normalRadioBtn;
+    @FXML private RadioButton economyRadioBtn;
+    @FXML private RadioButton vipRadioBtn;
+    @FXML private RadioButton singleRadioBtn;
+    @FXML private RadioButton doubleRadioBtn;
+    @FXML private RadioButton tripleRadioBtn;
+    @FXML private RadioButton trueRadioBtn;
+    @FXML private RadioButton falseRadioBtn;
 
     private ObservableList<Room> allRooms;
 
     @FXML
     private void initialize() {
-
+        // Initialize table columns
         roomNumberColumn.setCellValueFactory(new PropertyValueFactory<>("roomNumber"));
         roomTypeColumn.setCellValueFactory(new PropertyValueFactory<>("roomType"));
         roomCapacityColumn.setCellValueFactory(new PropertyValueFactory<>("roomCapacity"));
         priceColumn.setCellValueFactory(new PropertyValueFactory<>("price"));
         availabilityColumn.setCellValueFactory(new PropertyValueFactory<>("availability"));
 
-        // Populate the table with data from the file
-        allRooms = FXCollections.observableArrayList(readRoomsFromFile("data/room.txt"));
+        // Load data from database
+        allRooms = FXCollections.observableArrayList(loadRoomsFromDatabase());
         roomsTable.setItems(allRooms);
     }
 
-    private List<Room> readRoomsFromFile(String filePath) {
+    private List<Room> loadRoomsFromDatabase() {
         List<Room> rooms = new ArrayList<>();
+        Connection conn = null;
+        Statement stmt = null;
+        ResultSet rs = null;
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split("/");
-                if (parts.length == 5) {
-                    int roomNumber = Integer.parseInt(parts[0]);
-                    String roomType = parts[1];
-                    String roomCapacity = parts[2];
-                    double price = Double.parseDouble(parts[3]);
-                    boolean availability = Boolean.parseBoolean(parts[4]);
+        try {
+            conn = DatabaseUtil.getConnection();
+            stmt = conn.createStatement();
+            rs = stmt.executeQuery("SELECT * FROM rooms");
 
-                    Room room = new Room(roomNumber, roomType, roomCapacity, price, availability);
-                    rooms.add(room);
-                }
+            while (rs.next()) {
+                Room room = new Room(
+                    rs.getInt("roomNumber"),
+                    rs.getString("roomType"),
+                    rs.getString("roomCapacity"),
+                    rs.getDouble("price"),
+                    rs.getBoolean("availability")
+                );
+                rooms.add(room);
             }
-        } catch (IOException | NumberFormatException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
+            // Show error alert
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Database Error");
+            alert.setHeaderText("Failed to load rooms");
+            alert.setContentText(e.getMessage());
+            alert.showAndWait();
+        } finally {
+            DatabaseUtil.close(conn, stmt, rs);
         }
 
         return rooms;
@@ -159,5 +138,10 @@ public class RoomsController {
         roomsTable.setItems(allRooms);
     }
 
-
+    // Additional method to refresh data from database
+    @FXML
+    private void refreshData() {
+        allRooms = FXCollections.observableArrayList(loadRoomsFromDatabase());
+        roomsTable.setItems(allRooms);
+    }
 }

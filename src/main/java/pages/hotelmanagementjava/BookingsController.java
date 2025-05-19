@@ -1,17 +1,10 @@
 package pages.hotelmanagementjava;
-
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
 import pages.hotelmanagementjava.classes.Booking;
-
-
-import java.io.*;
+import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -19,47 +12,22 @@ import java.util.List;
 
 public class BookingsController {
 
-    @FXML
-    private TableView<Booking> bookingsTable;
-
-    @FXML
-    private TableColumn<Booking, Integer> guestIdColumn;
-
-    @FXML
-    private TableColumn<Booking, String> roomNumberColumn;
-
-    @FXML
-    private TableColumn<Booking, String> checkInDateColumn;
-
-    @FXML
-    private TableColumn<Booking, String> checkOutDateColumn;
-
-    @FXML
-    private TextField guestIdFilter;
-
-    @FXML
-    private TextField roomNumberFilter;
+    @FXML private TableView<Booking> bookingsTable;
+    @FXML private TableColumn<Booking, Integer> guestIdColumn;
+    @FXML private TableColumn<Booking, String> roomNumberColumn;
+    @FXML private TableColumn<Booking, String> checkInDateColumn;
+    @FXML private TableColumn<Booking, String> checkOutDateColumn;
+    @FXML private TextField guestIdFilter;
+    @FXML private TextField roomNumberFilter;
+    @FXML private Label checkinDate;
+    @FXML private Label checkoutDate;
+    @FXML private Label error;
+    @FXML private Label guestName;
+    @FXML private Label roomNumber;
+    @FXML private Label totalPrice;
 
     private List<Booking> allBookings;
-
-
-    @FXML
-    private Label checkinDate;
-
-    @FXML
-    private Label checkoutDate;
-
-    @FXML
-    private Label error;
-
-    @FXML
-    private Label guestName;
-
-    @FXML
-    private Label roomNumber;
-
-    @FXML
-    private Label totalPrice;
+    private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     public void initialize() {
         // Initialize the columns
@@ -68,8 +36,8 @@ public class BookingsController {
         checkInDateColumn.setCellValueFactory(new PropertyValueFactory<>("checkInDate"));
         checkOutDateColumn.setCellValueFactory(new PropertyValueFactory<>("checkOutDate"));
 
-        // Load data from the booking.txt file and display it in the table
-        loadDataFromFile("data/booking.txt");
+        // Load data from database
+        loadDataFromDatabase();
 
         bookingsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             if (newSelection != null) {
@@ -77,6 +45,35 @@ public class BookingsController {
             }
         });
     }
+
+    private void loadDataFromDatabase() {
+        allBookings = new ArrayList<>();
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+
+        try {
+            conn = DatabaseUtil.getConnection();
+            ps = conn.prepareStatement("SELECT * FROM bookings");
+            rs = ps.executeQuery();
+
+            while (rs.next()) {
+                int guestId = rs.getInt("guestId");
+                String roomNum = String.valueOf(rs.getInt("roomNumber"));
+                String checkIn = rs.getString("checkInDate");
+                String checkOut = rs.getString("checkOutDate");
+
+                Booking booking = new Booking(guestId, roomNum, checkIn, checkOut);
+                allBookings.add(booking);
+            }
+            displayBookings(allBookings);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DatabaseUtil.close(conn, ps, rs);
+        }
+    }
+
     private void updateLabels(Booking selectedBooking) {
         if (guestName != null) {
             guestName.setText(getGuestName(selectedBooking.getGuestId()));
@@ -95,73 +92,56 @@ public class BookingsController {
         }
 
         if (totalPrice != null) {
-            totalPrice.setText(findPrice(selectedBooking.getRoomNumber(), selectedBooking.getCheckInDate(), selectedBooking.getCheckOutDate()));
+            totalPrice.setText(findPrice(selectedBooking.getRoomNumber(), 
+                                      selectedBooking.getCheckInDate(), 
+                                      selectedBooking.getCheckOutDate()));
         }
     }
 
-    private String findPrice (String roomNumber , String checkindate , String checkoutdate){
-        String filePath = "data/room.txt";
-
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split("/");
-                if (parts.length == 5 && parts[0].equalsIgnoreCase(roomNumber)) {
-                    try {
-                        double Price = Double.parseDouble(parts[3]);
-                        double totalPrice = calculatePrice( Price , checkindate, checkoutdate);
-                        String total = String.valueOf(totalPrice);
-                        return total;
-                    } catch (NumberFormatException e) {
-                        System.out.println("Invalid double format");
-                    }
-                }
+    private String findPrice(String roomNumber, String checkindate, String checkoutdate) {
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = DatabaseUtil.getConnection();
+            ps = conn.prepareStatement("SELECT price FROM rooms WHERE roomNumber = ?");
+            ps.setInt(1, Integer.parseInt(roomNumber));
+            rs = ps.executeQuery();
+            
+            if (rs.next()) {
+                double price = rs.getDouble("price");
+                double totalPrice = calculatePrice(price, checkindate, checkoutdate);
+                return String.valueOf(totalPrice);
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
+        } finally {
+            DatabaseUtil.close(conn, ps, rs);
         }
         return "0.0";
     }
 
     private String getGuestName(int guestId) {
-        try (BufferedReader br = new BufferedReader(new FileReader("data/guestsinfo.txt"))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split("/");
-                if (parts.length == 5) {
-                    int currentGuestId = Integer.parseInt(parts[0]);
-                    if (currentGuestId == guestId) {
-                        // Concatenate first name and last name
-                        return parts[1] + " " + parts[2];
-                    }
-                }
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = DatabaseUtil.getConnection();
+            ps = conn.prepareStatement("SELECT firstName, lastName FROM guests WHERE id = ?");
+            ps.setInt(1, guestId);
+            rs = ps.executeQuery();
+            
+            if (rs.next()) {
+                return rs.getString("firstName") + " " + rs.getString("lastName");
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
+        } finally {
+            DatabaseUtil.close(conn, ps, rs);
         }
         return "Guest Not Found";
-    }
-    private void loadDataFromFile(String filePath) {
-        allBookings = new ArrayList<>();
-
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split("/");
-                if (parts.length == 4) {
-                    int guestId = Integer.parseInt(parts[0]);
-                    String roomNumber = parts[1];
-                    String checkInDate = parts[2];
-                    String checkOutDate = parts[3];
-
-                    Booking booking = new Booking(guestId, roomNumber, checkInDate, checkOutDate);
-                    allBookings.add(booking);
-                }
-            }
-            displayBookings(allBookings);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     private void displayBookings(List<Booking> bookings) {
@@ -181,78 +161,72 @@ public class BookingsController {
                 filteredBookings.add(booking);
             }
         }
-
-        // Display filtered bookings in the table
         displayBookings(filteredBookings);
     }
 
     private boolean matchesFilter(Booking booking, String guestIdFilter, String roomNumberFilter) {
         return (guestIdFilter.isEmpty() || String.valueOf(booking.getGuestId()).contains(guestIdFilter)) &&
-                (roomNumberFilter.isEmpty() || String.valueOf(booking.getRoomNumber()).contains(roomNumberFilter));
+               (roomNumberFilter.isEmpty() || String.valueOf(booking.getRoomNumber()).contains(roomNumberFilter));
     }
-
-    private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     public static double calculatePrice(double price, String checkinDate, String checkoutDate) {
         LocalDate startDate = LocalDate.parse(checkinDate, dateFormatter);
         LocalDate endDate = LocalDate.parse(checkoutDate, dateFormatter);
-
         int days = (int) startDate.until(endDate).getDays();
-
-        // Assuming price is per day
-        double totalPrice = price * days;
-
-        return totalPrice;
+        return price * days;
     }
 
     @FXML
     private void checkOut() {
-        // Retrieve selected booking
         Booking selectedBooking = bookingsTable.getSelectionModel().getSelectedItem();
 
         if (selectedBooking == null) {
             error.setText("Please select a booking.");
             return;
         }
-        deleteBookingLine("data/booking.txt", selectedBooking.getGuestId());
-        List<String> lines = CheckinController.readRoomFile("data/room.txt");
-        CheckinController.updateAvailability(lines, Integer.parseInt(roomNumber.getText()), true);
-        CheckinController.writeRoomFile("data/room.txt", lines);
-        error.setText("Checkout Successfully!");
-        error.setTextFill(Color.GREEN);
-        loadDataFromFile("data/booking.txt");
-        clearDetailsLabels();
-    }
 
-
-    private void deleteBookingLine(String filePath, int guestIdToDelete) {
-        // Read all lines from the file
-        List<String> lines = new ArrayList<>();
-
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split("/");
-                if (parts.length >= 1) {
-                    int guestId = Integer.parseInt(parts[0].trim());
-                    // Skip the line with the matching guestId
-                    if (guestId != guestIdToDelete) {
-                        lines.add(line);
-                    }
-                }
+        Connection conn = null;
+        PreparedStatement psDeleteBooking = null;
+        PreparedStatement psUpdateRoom = null;
+        
+        try {
+            conn = DatabaseUtil.getConnection();
+            conn.setAutoCommit(false); // Start transaction
+            
+            // Delete booking
+            psDeleteBooking = conn.prepareStatement("DELETE FROM bookings WHERE guestId = ? AND roomNumber = ?");
+            psDeleteBooking.setInt(1, selectedBooking.getGuestId());
+            psDeleteBooking.setInt(2, Integer.parseInt(selectedBooking.getRoomNumber()));
+            psDeleteBooking.executeUpdate();
+            
+            // Update room availability
+            psUpdateRoom = conn.prepareStatement("UPDATE rooms SET availability = true WHERE roomNumber = ?");
+            psUpdateRoom.setInt(1, Integer.parseInt(selectedBooking.getRoomNumber()));
+            psUpdateRoom.executeUpdate();
+            
+            conn.commit(); // Commit transaction
+            
+            error.setText("Checkout Successfully!");
+            error.setTextFill(Color.GREEN);
+            loadDataFromDatabase();
+            clearDetailsLabels();
+        } catch (SQLException e) {
+            try {
+                if (conn != null) conn.rollback();
+            } catch (SQLException ex) {
+                ex.printStackTrace();
             }
-        } catch (IOException e) {
             e.printStackTrace();
-        }
-
-        // Write the modified lines back to the file
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(filePath))) {
-            for (String line : lines) {
-                bw.write(line);
-                bw.newLine();
+            error.setText("Error during checkout");
+            error.setTextFill(Color.RED);
+        } finally {
+            try {
+                if (conn != null) conn.setAutoCommit(true);
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+            DatabaseUtil.close(conn, psDeleteBooking, null);
+            DatabaseUtil.close(null, psUpdateRoom, null);
         }
     }
 

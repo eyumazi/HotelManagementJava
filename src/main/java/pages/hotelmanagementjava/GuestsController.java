@@ -3,12 +3,8 @@ package pages.hotelmanagementjava;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.AnchorPane;
 import pages.hotelmanagementjava.classes.Guest;
-
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,40 +39,45 @@ public class GuestsController {
         phoneColumn.setCellValueFactory(new PropertyValueFactory<>("phoneNumber"));
         emailColumn.setCellValueFactory(new PropertyValueFactory<>("email"));
 
-        loadDataFromFile("data/guestsinfo.txt");
+        // Load data from database
+        loadDataFromDatabase();
 
+        // Add listener for search functionality
         guestId.textProperty().addListener((observable, oldValue, newValue) -> {
-            // Check if the new value is empty
             if (newValue.isEmpty()) {
-                // Reload all guests into the table
-                loadDataFromFile("data/guestsinfo.txt");
+                loadDataFromDatabase();
             }
         });
     }
 
-    private void loadDataFromFile(String filePath) {
+    private void loadDataFromDatabase() {
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
         List<Guest> allGuests = new ArrayList<>();
 
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split("/");
-                if (parts.length == 5) {
-                    int guestId = Integer.parseInt(parts[0]);
-                    String firstName = parts[1];
-                    String lastName = parts[2];
-                    String phoneNumber = parts[3];
-                    String email = parts[4];
+        try {
+            conn = DatabaseUtil.getConnection();
+            ps = conn.prepareStatement("SELECT * FROM guests");
+            rs = ps.executeQuery();
 
-                    Guest guest = new Guest(firstName, lastName, phoneNumber, email);
-                    guest.setId(guestId);
-                    allGuests.add(guest);
-                }
+            while (rs.next()) {
+                Guest guest = new Guest(
+                    rs.getInt("id"),
+                    rs.getString("firstName"),
+                    rs.getString("lastName"),
+                    rs.getString("phone"),
+                    rs.getString("email")
+                );
+                allGuests.add(guest);
             }
 
             displayGuests(allGuests);
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
+            // Show error message to user if needed
+        } finally {
+            DatabaseUtil.close(conn, ps, rs);
         }
     }
 
@@ -90,23 +91,38 @@ public class GuestsController {
         String guestIdText = guestId.getText().trim();
 
         if (!guestIdText.isEmpty()) {
-            int searchGuestId = Integer.parseInt(guestIdText);
-            Guest foundGuest = findGuestById(searchGuestId);
+            try {
+                int searchGuestId = Integer.parseInt(guestIdText);
+                Guest foundGuest = Guest.getGuestById(searchGuestId);
 
-            if (foundGuest != null) {
-                displayGuests(List.of(foundGuest));
-            } else {
+                if (foundGuest != null) {
+                    displayGuests(List.of(foundGuest));
+                } else {
+                    displayGuests(List.of());
+                    // Optionally show "Guest not found" message
+                }
+            } catch (NumberFormatException e) {
+                // Handle invalid number input
                 displayGuests(List.of());
+                // Optionally show error message
             }
         }
     }
 
-    private Guest findGuestById(int guestId) {
-        for (Guest guest : guestsTable.getItems()) {
-            if (guest.getId() == guestId) {
-                return guest;
-            }
-        }
-        return null;
+    // Additional methods for CRUD operations could be added here
+    // For example:
+    @FXML
+    private void addGuest() {
+        // Implementation for adding a new guest
+    }
+
+    @FXML
+    private void updateGuest() {
+        // Implementation for updating a guest
+    }
+
+    @FXML
+    private void deleteGuest() {
+        // Implementation for deleting a guest
     }
 }

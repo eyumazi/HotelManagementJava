@@ -5,79 +5,42 @@ import javafx.scene.control.*;
 import javafx.scene.paint.Color;
 import pages.hotelmanagementjava.classes.Booking;
 import pages.hotelmanagementjava.classes.Guest;
-
-import java.io.*;
+import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 
 public class CheckinController {
 
-    @FXML
-    private ToggleGroup capacity;
+    // UI components (same as original)
+    @FXML private ToggleGroup capacity;
+    @FXML private DatePicker checkindate;
+    @FXML private DatePicker checkoutdate;
+    @FXML private RadioButton doubleRb;
+    @FXML private RadioButton economyRb;
+    @FXML private TextField email;
+    @FXML private Label error;
+    @FXML private TextField firstname;
+    @FXML private TextField lastname;
+    @FXML private RadioButton normalRb;
+    @FXML private TextField phonenumber;
+    @FXML private RadioButton singleRb;
+    @FXML private RadioButton tripleRb;
+    @FXML private ToggleGroup type;
+    @FXML private RadioButton vipRb;
+    @FXML private Label price;
+    @FXML private Label roomNumber;
 
-    @FXML
-    private DatePicker checkindate;
-
-    @FXML
-    private DatePicker checkoutdate;
-
-    @FXML
-    private RadioButton doubleRb;
-
-    @FXML
-    private RadioButton economyRb;
-
-    @FXML
-    private TextField email;
-
-    @FXML
-    private Label error;
-
-    @FXML
-    private TextField firstname;
-
-    @FXML
-    private TextField lastname;
-
-    @FXML
-    private RadioButton normalRb;
-
-    @FXML
-    private TextField phonenumber;
-
-    @FXML
-    private RadioButton singleRb;
-
-    @FXML
-    private RadioButton tripleRb;
-
-    @FXML
-    private ToggleGroup type;
-
-    @FXML
-    private RadioButton vipRb;
-
-    @FXML
-    private Label price;
-
-    @FXML
-    private Label roomNumber;
-
-    boolean found = false;
-
+    private boolean found = false;
     private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    // Function to validate customer data
+    // Validation methods (same as original)
     private boolean validateCustomerData() {
-        if (firstname.getText().isEmpty() || lastname.getText().isEmpty() || phonenumber.getText().isEmpty()
-                || email.getText().isEmpty()) {
+        if (firstname.getText().isEmpty() || lastname.getText().isEmpty() || 
+            phonenumber.getText().isEmpty() || email.getText().isEmpty()) {
             showError("All fields must be filled.");
             return false;
         }
 
-        // Validate email format
         String emailPattern = "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}";
         if (!email.getText().matches(emailPattern)) {
             showError("Please enter a valid email address.");
@@ -87,10 +50,9 @@ public class CheckinController {
         return true;
     }
 
-
     private boolean validateRoomAndDates() {
-        if (type.getSelectedToggle() == null || capacity.getSelectedToggle() == null
-                || checkindate.getValue() == null || checkoutdate.getValue() == null) {
+        if (type.getSelectedToggle() == null || capacity.getSelectedToggle() == null ||
+            checkindate.getValue() == null || checkoutdate.getValue() == null) {
             showError("Please select room type, capacity, and enter check-in and check-out dates.");
             return false;
         }
@@ -102,7 +64,6 @@ public class CheckinController {
 
         return true;
     }
-
 
     private void showError(String message) {
         error.setText(message);
@@ -117,7 +78,6 @@ public class CheckinController {
     private void submit() {
         clearError();
 
-        // Validate input fields
         if (!validateCustomerData() || !validateRoomAndDates()) {
             return;
         }
@@ -125,137 +85,140 @@ public class CheckinController {
         String roomType = getSelectedRadioButton(type);
         String roomCapacity = getSelectedRadioButton(capacity);
 
-        String filePath = "data/room.txt";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
 
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split("/");
-                if (parts.length == 5 && parts[1].equalsIgnoreCase(roomType) && parts[2].equalsIgnoreCase(roomCapacity)
-                        && parts[4].equalsIgnoreCase("true")) {
-                    roomNumber.setText(parts[0]);
-                    try {
-                        double Price = Double.parseDouble(parts[3]);
-                        double totalPrice = calculatePrice(Price, checkindate.getValue().toString(), checkoutdate.getValue().toString());
-                        String total = String.valueOf(totalPrice);
-                        price.setText(total);
-                        found = true;
-                    } catch (NumberFormatException e) {
-                        System.out.println("Invalid double format");
-                    }
+        try {
+            conn = DatabaseUtil.getConnection();
+            String sql = "SELECT * FROM rooms WHERE roomType = ? AND roomCapacity = ? AND availability = true LIMIT 1";
+            ps = conn.prepareStatement(sql);
+            ps.setString(1, roomType);
+            ps.setString(2, roomCapacity);
+            rs = ps.executeQuery();
 
-                    return;
-                }
+            if (rs.next()) {
+                int availableRoomNumber = rs.getInt("roomNumber");
+                double roomPrice = rs.getDouble("price");
+                
+                roomNumber.setText(String.valueOf(availableRoomNumber));
+                double totalPrice = calculatePrice(roomPrice, 
+                    checkindate.getValue().toString(), 
+                    checkoutdate.getValue().toString());
+                price.setText(String.valueOf(totalPrice));
+                found = true;
+            } else {
+                showError("No available room matching your criteria.");
             }
-            showError("No available room matching your criteria.");
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
-            showError("Error reading room information. Please try again.");
+            showError("Error accessing room information. Please try again.");
+        } finally {
+            DatabaseUtil.close(conn, ps, rs);
         }
     }
 
     private double calculatePrice(double price, String checkinDate, String checkoutDate) {
         LocalDate startDate = LocalDate.parse(checkinDate, dateFormatter);
         LocalDate endDate = LocalDate.parse(checkoutDate, dateFormatter);
-
-        int days = (int) startDate.until(endDate).getDays();
-
-        return price * days;
+        return price * startDate.until(endDate).getDays();
     }
 
     private String getSelectedRadioButton(ToggleGroup toggleGroup) {
-        RadioButton selectedRadioButton = (RadioButton) toggleGroup.getSelectedToggle();
-        return selectedRadioButton.getText();
+        return ((RadioButton) toggleGroup.getSelectedToggle()).getText();
     }
 
     @FXML
     private void confirm() {
         if (validateCustomerData() && validateRoomAndDates() && found) {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("");
-            alert.setHeaderText("Check-in has been successful!");
-            alert.setContentText("Thank you for choosing our hotel.");
-            alert.showAndWait();
-            String firstName = firstname.getText();
-            String lastName = lastname.getText();
-            String phoneNumber = phonenumber.getText();
-            String emailAddress = email.getText();
-            String roomnumber = roomNumber.getText();
-            String checkin = checkindate.getValue().toString();
-            String checkout = checkoutdate.getValue().toString();
-            Guest guest = new Guest(firstName, lastName, phoneNumber, emailAddress);
-            guest.setId();
-            Booking book = new Booking(guest.getId(), roomnumber, checkin, checkout);
-            book.addBooking();
-            List<String> lines = readRoomFile("data/room.txt");
-            updateAvailability(lines, Integer.parseInt(roomNumber.getText()), false);
-            writeRoomFile("data/room.txt", lines);
-            clear();
+            Connection conn = null;
+            try {
+                conn = DatabaseUtil.getConnection();
+                conn.setAutoCommit(false); // Start transaction
+
+                // Create guest
+                Guest guest = new Guest(
+                    firstname.getText(),
+                    lastname.getText(),
+                    phonenumber.getText(),
+                    email.getText()
+                );
+                guest.setId();
+                guest.saveGuest();
+
+                // Create booking
+                Booking booking = new Booking(
+                    guest.getId(),
+                    roomNumber.getText(),
+                    checkindate.getValue().toString(),
+                    checkoutdate.getValue().toString()
+                );
+                booking.addBooking();
+
+                // Update room availability
+                updateRoomAvailability(Integer.parseInt(roomNumber.getText()), false);
+
+                conn.commit(); // Commit transaction
+
+                showSuccess("Check-in has been successful!");
+                clear();
+            } catch (SQLException e) {
+                try {
+                    if (conn != null) conn.rollback();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+                e.printStackTrace();
+                showError("Error during check-in. Please try again.");
+            } finally {
+                try {
+                    if (conn != null) conn.setAutoCommit(true);
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
         } else {
             showError("Confirmation Unsuccessful!");
         }
     }
 
+    private void updateRoomAvailability(int roomNumber, boolean available) throws SQLException {
+        Connection conn = null;
+        PreparedStatement ps = null;
+        
+        try {
+            conn = DatabaseUtil.getConnection();
+            String sql = "UPDATE rooms SET availability = ? WHERE roomNumber = ?";
+            ps = conn.prepareStatement(sql);
+            ps.setBoolean(1, available);
+            ps.setInt(2, roomNumber);
+            ps.executeUpdate();
+        } finally {
+            DatabaseUtil.close(conn, ps, null);
+        }
+    }
+
+    private void showSuccess(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("");
+        alert.setHeaderText(message);
+        alert.setContentText("Thank you for choosing our hotel.");
+        alert.showAndWait();
+    }
+
     @FXML
     private void clear() {
         clearError();
-
-        // Clear text fields
         firstname.clear();
         lastname.clear();
         phonenumber.clear();
         email.clear();
-
-        // Clear radio buttons
         type.selectToggle(null);
         capacity.selectToggle(null);
-
-        // Clear date pickers
         checkindate.getEditor().clear();
         checkoutdate.getEditor().clear();
-
-        // Clear labels
         roomNumber.setText("");
         price.setText("");
-    }
-
-    public static List<String> readRoomFile(String filePath) {
-        List<String> lines = new ArrayList<>();
-
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                lines.add(line);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return lines;
-    }
-
-    public static void updateAvailability(List<String> lines, int roomNumber, boolean newAvailability) {
-        for (int i = 0; i < lines.size(); i++) {
-            String[] parts = lines.get(i).split("/");
-            if (parts.length == 5) {
-                int currentRoomNumber = Integer.parseInt(parts[0]);
-                if (currentRoomNumber == roomNumber) {
-                    parts[4] = String.valueOf(newAvailability);
-                    lines.set(i, String.join("/", parts));
-                    break;
-                }
-            }
-        }
-    }
-
-    public static void writeRoomFile(String filePath, List<String> lines) {
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(filePath))) {
-            for (String line : lines) {
-                bw.write(line);
-                bw.newLine();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        found = false;
     }
 }

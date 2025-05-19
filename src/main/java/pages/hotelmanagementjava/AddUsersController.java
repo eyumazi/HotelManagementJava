@@ -6,10 +6,8 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import pages.hotelmanagementjava.classes.Admin;
-
 import java.io.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 
 public class AddUsersController {
 
