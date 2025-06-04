@@ -202,7 +202,6 @@ public class CheckinController {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("");
         alert.setHeaderText(message);
-        alert.setContentText("Thank you for choosing our hotel.");
         alert.showAndWait();
     }
 

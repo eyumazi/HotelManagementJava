@@ -6,8 +6,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import pages.hotelmanagementjava.classes.Admin;
-import java.io.*;
-
+import java.sql.*;
 
 public class AddUsersController {
 
@@ -41,19 +40,14 @@ public class AddUsersController {
     @FXML
     private TableView<Admin> userTableView;
 
-    // Define the columns for the TableView
     @FXML
     private TableColumn<Admin, String> firstNameColumn;
-
     @FXML
     private TableColumn<Admin, String> lastNameColumn;
-
     @FXML
     private TableColumn<Admin, String> usernameColumn;
-
     @FXML
     private TableColumn<Admin, String> phoneNumberColumn;
-
     @FXML
     private TableColumn<Admin, String> emailColumn;
 
@@ -68,8 +62,8 @@ public class AddUsersController {
         phoneNumberColumn.setCellValueFactory(new PropertyValueFactory<>("phoneNumber"));
         emailColumn.setCellValueFactory(new PropertyValueFactory<>("email"));
 
-        // Load  data from the file and populate the TableView
-        usersList = FXCollections.observableArrayList(readUsersFromFile("data/admininfo.txt"));
+        // Load data from database and populate the TableView
+        usersList = FXCollections.observableArrayList(loadUsersFromDatabase());
         userTableView.setItems(usersList);
     }
 
@@ -85,35 +79,34 @@ public class AddUsersController {
 
         // Validate input
         if (validateInput(firstName, lastName, phoneNumber, email, username, password, confirmPassword)) {
-            // Create a new User object
+            // Create a new Admin object
             Admin newUser = new Admin(firstName, lastName, phoneNumber, email, username, password);
 
-            // Add the new user to the TableView and update the file
-            usersList.add(newUser);
-            writeUserToFile(newUser, "data/admininfo.txt");
-
-            // Clear input fields and error label
-            clearFields();
-            errorLabel.setText("");
+            // Add the new user to the database and TableView
+            if (addUserToDatabase(newUser)) {
+                usersList.add(newUser);
+                clearFields();
+                errorLabel.setText("");
+            } else {
+                errorLabel.setText("Failed to add user. Username might already exist.");
+            }
         }
     }
 
     private boolean validateInput(String firstName, String lastName, String phoneNumber,
-                                  String email, String username, String password, String confirmPassword) {
+                                 String email, String username, String password, String confirmPassword) {
 
-        // Sample validation for non-empty fields
         if (firstName.isEmpty() || lastName.isEmpty() || phoneNumber.isEmpty() ||
                 email.isEmpty() || username.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
             errorLabel.setText("All fields must be filled");
             return false;
         }
 
-        if (password.length() < 5){
-            errorLabel.setText("Password length must be atleast 5");
+        if (password.length() < 5) {
+            errorLabel.setText("Password length must be at least 5");
             return false;
         }
 
-        // Sample validation for password match
         if (!password.equals(confirmPassword)) {
             errorLabel.setText("Passwords do not match");
             return false;
@@ -122,40 +115,62 @@ public class AddUsersController {
         return true;
     }
 
-    private void writeUserToFile(Admin user, String filePath) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))) {
-            writer.write(user.getFirstName() + "/" + user.getLastName() + "/" + user.getUsername() + "/"
-                    + user.getPassword() + "/" + user.getPhoneNumber() + "/" + user.getEmail()+ "\n") ;
-            writer.newLine();
-        } catch (IOException e) {
+    private boolean addUserToDatabase(Admin user) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        
+        try {
+            conn = DatabaseUtil.getConnection();
+            String sql = "INSERT INTO users (firstName, lastName, username, password, phone, email) VALUES (?, ?, ?, ?, ?, ?)";
+            stmt = conn.prepareStatement(sql);
+            
+            stmt.setString(1, user.getFirstName());
+            stmt.setString(2, user.getLastName());
+            stmt.setString(3, user.getUsername());
+            stmt.setString(4, user.getPassword());
+            stmt.setString(5, user.getPhoneNumber());
+            stmt.setString(6, user.getEmail());
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+            
+        } catch (SQLException e) {
             e.printStackTrace();
+            return false;
+        } finally {
+            DatabaseUtil.close(conn, stmt, null);
         }
     }
 
-    private ObservableList<Admin> readUsersFromFile(String filePath) {
+    private ObservableList<Admin> loadUsersFromDatabase() {
         ObservableList<Admin> users = FXCollections.observableArrayList();
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split("/");
-                if (parts.length == 6) {
-                    String firstName = parts[0].trim();
-                    String lastName = parts[1].trim();
-                    String username = parts[2].trim();
-                    String phoneNumber = parts[4].trim();
-                    String email = parts[5].trim();
-                    String password = parts[3];
-
-                    Admin user = new Admin(firstName, lastName, phoneNumber, email, username,password);
-                    users.add(user);
-                }
+        Connection conn = null;
+        Statement stmt = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = DatabaseUtil.getConnection();
+            stmt = conn.createStatement();
+            rs = stmt.executeQuery("SELECT * FROM users");
+            
+            while (rs.next()) {
+                String firstName = rs.getString("firstName");
+                String lastName = rs.getString("lastName");
+                String username = rs.getString("username");
+                String password = rs.getString("password");
+                String phone = rs.getString("phone");
+                String email = rs.getString("email");
+                
+                Admin user = new Admin(firstName, lastName, phone, email, username, password);
+                users.add(user);
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
-            errorLabel.setText("Please try again later!");
+            errorLabel.setText("Error loading users from database");
+        } finally {
+            DatabaseUtil.close(conn, stmt, rs);
         }
-
+        
         return users;
     }
 
