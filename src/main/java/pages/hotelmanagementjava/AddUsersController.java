@@ -121,7 +121,7 @@ public class AddUsersController {
         
         try {
             conn = DatabaseUtil.getConnection();
-            String sql = "INSERT INTO users (firstName, lastName, username, password, phone, email) VALUES (?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO admins (firstName, lastName, username, password, phone, email) VALUES (?, ?, ?, ?, ?, ?)";
             stmt = conn.prepareStatement(sql);
             
             stmt.setString(1, user.getFirstName());
@@ -151,7 +151,7 @@ public class AddUsersController {
         try {
             conn = DatabaseUtil.getConnection();
             stmt = conn.createStatement();
-            rs = stmt.executeQuery("SELECT * FROM users");
+            rs = stmt.executeQuery("SELECT * FROM admins");
             
             while (rs.next()) {
                 String firstName = rs.getString("firstName");
